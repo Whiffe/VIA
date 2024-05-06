@@ -4762,7 +4762,7 @@ _via_file_annotator.prototype._rinput_mouseup_handler = function(e) {
     this._smetadata_show();
     this._creg_draw_all();
     this._state_set( _VIA_RINPUT_STATE.REGION_SELECTED );
-    _via_util_msg_show('Region selected. Press <span class="key">Backspace</span> key to delete and arrow keys to move selected region. Use mouse wheel to update region label.', true);
+    _via_util_msg_show(' ', true);
     return;
   }
 
@@ -12206,7 +12206,7 @@ function _via(via_container) {
   this.message_container.setAttribute('class', 'message_container');
   this.message_container.addEventListener('click', _via_util_msg_hide);
   this.message_panel = document.createElement('div');
-  this.message_panel.setAttribute('id', '_via_message');
+  //this.message_panel.setAttribute('id', '_via_message');
   this.message_container.appendChild(this.message_panel);
   this.via_container.appendChild(this.message_container);
 
