@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>viaJson计数</title>
+    <script src="https://cdn.staticfile.net/jquery/1.10.2/jquery.min.js"></script> 
+</head>
+<body>
+    <h1>上传json文件</h1>
+    <input type="file" id="fileInput" accept=".json" />
+    <button id="uploadButton">Upload</button>
+    <!-- <div id="jsonContent"></div> -->
+    <div>检测框数量: <span id="metadataLength"></span></div>
+    <div>标注数量: <span id="avLengthSum"></span></div>
+
+    <script>
+    $(document).ready(function() {
+        $('#uploadButton').click(function() {
+            var fileInput = $('#fileInput')[0];
+            var file = fileInput.files[0];
+            var reader = new FileReader();
+
+            reader.onload = function(e) {
+                var jsonContent = e.target.result;
+                try {
+                    var jsonObj = JSON.parse(jsonContent);
+                    var metadata = jsonObj.metadata;
+
+                    // 检查metadata是否存在并计算其长度
+                    var metadataLength = 0;
+                    // 检查metadata是否存在并且是对象
+                    if (metadata && typeof metadata === 'object' && metadata !== null) {
+                        // 计算metadata对象中的属性数量
+                        metadataLength = Object.keys(metadata).length;
+                    }
+                    
+                    var avLengthSum = 0; // 初始化AV长度总和
+
+                    // 遍历metadata对象
+                    $.each(metadata, function(key, value) {
+                        // 检查av属性是否存在
+                        if (value.av) {
+                            // 累加av对象的属性数量
+                            avLengthSum += Object.keys(value.av).length;
+                        }
+                    });
+
+                    $('#jsonContent').text(JSON.stringify(jsonObj, null, 2));
+                    $('#avLengthSum').text(avLengthSum);
+
+                    $('#jsonContent').text(JSON.stringify(jsonObj, null, 2));
+                    $('#metadataLength').text(metadataLength);
+                } catch (error) {
+                    console.error("Error parsing JSON:", error);
+                    $('#jsonContent').text("Error parsing JSON: " + error.message);
+                }
+            };
+
+            reader.onerror = function() {
+                console.error("Error reading file");
+                $('#jsonContent').text("Error reading file");
+            };
+
+            if (file) {
+                reader.readAsText(file);
+            }
+        });
+    });
+    </script>
+</body>
+</html>
