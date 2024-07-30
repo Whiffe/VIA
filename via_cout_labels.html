@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>viaJson计数</title>
+    <script src="https://cdn.staticfile.net/jquery/1.10.2/jquery.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .input-group {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .input-group input {
+            width: calc(100% - 100px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        .input-group button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .input-group button:hover {
+            background-color: #0056b3;
+        }
+        .results {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        .results div {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        .results div span {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .results ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .results li {
+            background: #e9ecef;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>viaJson计数</h1>
+        <div class="input-group">
+            <input type="file" id="fileInput" accept=".json" />
+            <button id="uploadButton">上传--开始计算</button>
+        </div>
+        <div class="results">
+            <div>检测框数量: <span id="metadataLength"></span></div>
+            <div>标注数量: <span id="avLengthSum"></span></div>
+            <div>没有标注的图片: <span id="noAnnotationImages"></span></div>
+            <div>没有标注的框坐标:</div>
+            <ul id="noAnnotationCoordinates"></ul>
+        </div>
+    </div>
+
+    <script>
+    $(document).ready(function() {
+        $('#uploadButton').click(function() {
+            var fileInput = $('#fileInput')[0];
+            var file = fileInput.files[0];
+            var reader = new FileReader();
+
+            reader.onload = function(e) {
+                var jsonContent = e.target.result;
+                try {
+                    var jsonObj = JSON.parse(jsonContent);
+                    var metadata = jsonObj.metadata;
+
+                    var metadataLength = 0;
+                    var avLengthSum = 0;
+                    var noAnnotationImages = [];
+                    var noAnnotationCoordinates = [];
+
+                    if (metadata && typeof metadata === 'object' && metadata !== null) {
+                        metadataLength = Object.keys(metadata).length;
+
+                        $.each(metadata, function(key, value) {
+                            if (value.av && Object.keys(value.av).length > 0) {
+                                avLengthSum += Object.keys(value.av).length;
+                            } else {
+                                var imageName = jsonObj.file[key.split('_')[0]].fname;
+                                noAnnotationImages.push(imageName);
+                                noAnnotationCoordinates.push({
+                                    imageName: imageName,
+                                    xywh: value.xy.slice(1)
+                                });
+                            }
+                        });
+                    }
+
+                    $('#metadataLength').text(metadataLength);
+                    $('#avLengthSum').text(avLengthSum);
+
+                    if (noAnnotationImages.length > 0) {
+                        $('#noAnnotationImages').text(noAnnotationImages.join(', '));
+                        $('#noAnnotationCoordinates').empty();
+                        noAnnotationCoordinates.forEach(function(coord) {
+                            $('#noAnnotationCoordinates').append('<li>Image: ' + coord.imageName + ', Coordinates: ' + JSON.stringify(coord.xywh) + '</li>');
+                        });
+                    } else {
+                        $('#noAnnotationImages').text('无');
+                        $('#noAnnotationCoordinates').empty();
+                    }
+                } catch (error) {
+                    console.error("Error parsing JSON:", error);
+                    $('#jsonContent').text("Error parsing JSON: " + error.message);
+                }
+            };
+
+            reader.onerror = function() {
+                console.error("Error reading file");
+                $('#jsonContent').text("Error reading file");
+            };
+
+            if (file) {
+                reader.readAsText(file);
+            }
+        });
+    });
+    </script>
+</body>
+</html>
