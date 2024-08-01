@@ -626,6 +626,10 @@ POSSIBILITY OF SUCH DAMAGE.
  *
  */
 
+//2024-8-1增加的功能，关闭网站前提示
+window.onbeforeunload = function() { 
+  return "确认离开当前页面吗？未保存的数据将会丢失";
+}
 'use strict'
 
 var _via_msg_clear_timer; // holds a reference to current message timoout
