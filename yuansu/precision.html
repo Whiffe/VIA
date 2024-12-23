@@ -30,7 +30,12 @@
     {"start": "00:26:26", "end": "00:32:00"}
 ]'></textarea>
     <h3>人工结果 (ground_truth)</h3>
-    <textarea id="ground_truth" placeholder='[{"start": "00:22:08", "end": "00:24:38", "content": "描述"}]'></textarea>
+    <textarea id="ground_truth" placeholder='[
+    {"start": "00:22:08", "end": "00:24:38", "content": "学生讨论"},
+    {"start": "00:26:26", "end": "00:32:00", "content": "教师播放视频"},
+    {"start": "00:32:31", "end": "00:39:00", "content": "学生自由朗读"}
+]
+'></textarea>
     <button onclick="calculateMetrics()">计算指标</button>
     <div class="result">
         <h3>结果</h3>
