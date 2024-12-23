@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>时间段匹配指标计算</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-bottom: 10px;
+        }
+        .result {
+            margin-top: 20px;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>时间段匹配指标计算</h1>
+    <h3>模型输出 (model_output)</h3>
+    <textarea id="model_output" placeholder='[{"start": "00:22:46", "end": "00:25:00"}]'></textarea>
+    <h3>人工结果 (ground_truth)</h3>
+    <textarea id="ground_truth" placeholder='[{"start": "00:22:08", "end": "00:24:38", "content": "描述"}]'></textarea>
+    <button onclick="calculateMetrics()">计算指标</button>
+    <div class="result">
+        <h3>结果</h3>
+        <pre id="output"></pre>
+        <p class="error" id="error"></p>
+    </div>
+
+    <script>
+        function timeToSeconds(timeStr) {
+            const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+            return hours * 3600 + minutes * 60 + seconds;
+        }
+
+        function overlapDuration(range1, range2) {
+            const start1 = timeToSeconds(range1.start);
+            const end1 = timeToSeconds(range1.end);
+            const start2 = timeToSeconds(range2.start);
+            const end2 = timeToSeconds(range2.end);
+            const overlapStart = Math.max(start1, start2);
+            const overlapEnd = Math.min(end1, end2);
+            return Math.max(0, overlapEnd - overlapStart);
+        }
+
+        function totalDuration(ranges) {
+            return ranges.reduce((sum, r) => sum + (timeToSeconds(r.end) - timeToSeconds(r.start)), 0);
+        }
+
+        function calculateMetrics() {
+            const modelOutputText = document.getElementById('model_output').value;
+            const groundTruthText = document.getElementById('ground_truth').value;
+            const outputElement = document.getElementById('output');
+            const errorElement = document.getElementById('error');
+            outputElement.textContent = '';
+            errorElement.textContent = '';
+            
+            try {
+                const modelOutput = JSON.parse(modelOutputText);
+                const groundTruth = JSON.parse(groundTruthText);
+
+                let matchedDuration = 0;
+                for (const gt of groundTruth) {
+                    for (const mo of modelOutput) {
+                        matchedDuration += overlapDuration(gt, mo);
+                    }
+                }
+
+                const totalGroundTruthDuration = totalDuration(groundTruth);
+                const totalModelDuration = totalDuration(modelOutput);
+
+                const precision = totalGroundTruthDuration > 0 ? (matchedDuration / totalGroundTruthDuration) : 0;
+                const recall = totalModelDuration > 0 ? (matchedDuration / totalModelDuration) : 0;
+                const f1Score = (precision + recall) > 0 ? (2 * precision * recall / (precision + recall)) : 0;
+
+                outputElement.textContent = `匹配时长(秒): ${matchedDuration}\n` +
+                                            `标准答案总时长(秒): ${totalGroundTruthDuration}\n` +
+                                            `模型输出总时长(秒): ${totalModelDuration}\n` +
+                                            `准确率(Precision): ${precision.toFixed(2)}\n` +
+                                            `召回率(Recall): ${recall.toFixed(2)}\n` +
+                                            `F1分数(F1 Score): ${f1Score.toFixed(2)}`;
+            } catch (error) {
+                errorElement.textContent = '请输入有效的 JSON 格式！';
+            }
+        }
+    </script>
+</body>
+</html>
