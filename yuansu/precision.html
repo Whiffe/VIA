@@ -6,43 +6,97 @@
     <title>时间段匹配指标计算</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f9fafc;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            text-align: center;
+            color: #4a90e2;
+        }
+        h3 {
+            margin-top: 20px;
+            color: #555;
         }
         textarea {
             width: 100%;
-            height: 150px;
-            margin-bottom: 10px;
+            height: 120px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 14px;
+            font-family: monospace;
+            background: #fefefe;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            color: #fff;
+            background: #4a90e2;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #357ab7;
         }
         .result {
-            margin-top: 20px;
+            margin-top: 30px;
+            padding: 15px;
+            background: #f4f6f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .result h3 {
+            margin-top: 0;
+        }
+        pre {
+            background: #eef1f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
         }
         .error {
-            color: red;
+            color: #d9534f;
+            font-weight: bold;
+            margin-top: 10px;
         }
     </style>
 </head>
 <body>
-    <h1>时间段匹配指标计算</h1>
-    <h3>模型输出 (model_output)</h3>
-    <textarea id="model_output" placeholder='[
+    <div class="container">
+        <h1>时间段匹配指标计算</h1>
+        <h3>模型输出 (model_output)</h3>
+        <textarea id="model_output" placeholder='[
     {"start": "00:22:46", "end": "00:25:00"},
     {"start": "00:26:26", "end": "00:32:00"}
 ]'></textarea>
-    <h3>人工结果 (ground_truth)</h3>
-    <textarea id="ground_truth" placeholder='[
+        <h3>人工结果 (ground_truth)</h3>
+        <textarea id="ground_truth" placeholder='[
     {"start": "00:22:08", "end": "00:24:38", "content": "学生讨论"},
     {"start": "00:26:26", "end": "00:32:00", "content": "教师播放视频"},
     {"start": "00:32:31", "end": "00:39:00", "content": "学生自由朗读"}
-]
-'></textarea>
-    <button onclick="calculateMetrics()">计算指标</button>
-    <div class="result">
-        <h3>结果</h3>
-        <pre id="output"></pre>
-        <p class="error" id="error"></p>
+]'></textarea>
+        <button onclick="calculateMetrics()">计算指标</button>
+        <div class="result">
+            <h3>结果</h3>
+            <pre id="output"></pre>
+            <p class="error" id="error"></p>
+        </div>
     </div>
-
     <script>
         function timeToSeconds(timeStr) {
             const [hours, minutes, seconds] = timeStr.split(':').map(Number);
