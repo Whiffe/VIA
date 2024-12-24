@@ -81,11 +81,18 @@
         <h1>时间段匹配指标计算</h1>
         <h3>模型输出 (model_output)</h3>
         <textarea id="model_output" placeholder='[
-  {"time1": "00:00:00 - 00:00:13"}
+  {
+    "time1": "00:00:00 - 00:00:13",
+    "time2": "00:05:40 - 00:06:00",
+  }
 ]'></textarea>
         <h3>人工结果 (ground_truth)</h3>
         <textarea id="ground_truth" placeholder='[
-  {"time1": "00:03:16 - 00:04:20", "time2": "00:05:46 - 00:06:12", "time3": "00:15:57 - 00:16:36"}
+  {
+    "time1": "00:03:16 - 00:04:20",
+    "time2": "00:05:46 - 00:06:12",
+    "time3": "00:15:57 - 00:16:36"
+  }
 ]'></textarea>
         <button onclick="calculateMetrics()">计算指标</button>
         <div class="result">
