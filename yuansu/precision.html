@@ -81,14 +81,11 @@
         <h1>时间段匹配指标计算</h1>
         <h3>模型输出 (model_output)</h3>
         <textarea id="model_output" placeholder='[
-    {"start": "00:22:46", "end": "00:25:00"},
-    {"start": "00:26:26", "end": "00:32:00"}
+  {"time1": "00:00:00 - 00:00:13"}
 ]'></textarea>
         <h3>人工结果 (ground_truth)</h3>
         <textarea id="ground_truth" placeholder='[
-    {"start": "00:22:08", "end": "00:24:38", "content": "学生讨论"},
-    {"start": "00:26:26", "end": "00:32:00", "content": "教师播放视频"},
-    {"start": "00:32:31", "end": "00:39:00", "content": "学生自由朗读"}
+  {"time1": "00:03:16 - 00:04:20", "time2": "00:05:46 - 00:06:12", "time3": "00:15:57 - 00:16:36"}
 ]'></textarea>
         <button onclick="calculateMetrics()">计算指标</button>
         <div class="result">
@@ -103,6 +100,11 @@
             return hours * 3600 + minutes * 60 + seconds;
         }
 
+        function parseTimeRange(rangeStr) {
+            const [start, end] = rangeStr.split(' - ');
+            return { start, end };
+        }
+
         function overlapDuration(range1, range2) {
             const start1 = timeToSeconds(range1.start);
             const end1 = timeToSeconds(range1.end);
@@ -111,6 +113,18 @@
             const overlapStart = Math.max(start1, start2);
             const overlapEnd = Math.min(end1, end2);
             return Math.max(0, overlapEnd - overlapStart);
+        }
+
+        function extractTimeRanges(data) {
+            const ranges = [];
+            for (const item of data) {
+                for (const key in item) {
+                    if (item[key]) {
+                        ranges.push(parseTimeRange(item[key]));
+                    }
+                }
+            }
+            return ranges;
         }
 
         function totalDuration(ranges) {
@@ -124,20 +138,23 @@
             const errorElement = document.getElementById('error');
             outputElement.textContent = '';
             errorElement.textContent = '';
-            
+
             try {
                 const modelOutput = JSON.parse(modelOutputText);
                 const groundTruth = JSON.parse(groundTruthText);
 
+                const modelRanges = extractTimeRanges(modelOutput);
+                const groundRanges = extractTimeRanges(groundTruth);
+
                 let matchedDuration = 0;
-                for (const gt of groundTruth) {
-                    for (const mo of modelOutput) {
+                for (const gt of groundRanges) {
+                    for (const mo of modelRanges) {
                         matchedDuration += overlapDuration(gt, mo);
                     }
                 }
 
-                const totalGroundTruthDuration = totalDuration(groundTruth);
-                const totalModelDuration = totalDuration(modelOutput);
+                const totalGroundTruthDuration = totalDuration(groundRanges);
+                const totalModelDuration = totalDuration(modelRanges);
 
                 const precision = totalGroundTruthDuration > 0 ? (matchedDuration / totalGroundTruthDuration) : 0;
                 const recall = totalModelDuration > 0 ? (matchedDuration / totalModelDuration) : 0;
