@@ -6,58 +6,96 @@
     <title>起止时间与人工时间提取</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f7f7f7;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         textarea {
             width: 100%;
             height: 200px;
             margin-top: 10px;
+            padding: 10px;
+            font-family: 'Arial', sans-serif;
+            box-sizing: border-box;
         }
-        .container {
-            margin-top: 20px;
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #4cae4c;
         }
         .section {
             margin-top: 20px;
         }
-        button {
-            margin-top: 10px;
-            padding: 5px 10px;
-            cursor: pointer;
+        h1, h3 {
+            color: #5cb85c;
         }
         pre {
             background-color: #f4f4f4;
             padding: 10px;
             border: 1px solid #ccc;
             overflow-x: auto;
+            border-radius: 5px;
         }
         #message {
             color: red;
             margin-top: 10px;
         }
+        .copy-btn {
+            margin-top: 10px;
+            padding: 5px 10px;
+            cursor: pointer;
+            background-color: #f0ad4e;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .copy-btn:hover {
+            background-color: #ec971f;
+        }
     </style>
 </head>
 <body>
 
-    <h1>起止时间与人工时间提取工具</h1>
-    <p>将 JSON 数据粘贴到下面的文本框中：</p>
-    <textarea id="jsonInput" placeholder="粘贴 JSON 数据..."></textarea>
-    <button onclick="extractTimes()">提取时间</button>
-
     <div class="container">
-        <div class="section">
-            <h3>起止时间：</h3>
-            <pre id="timeOutput"></pre>
-            <button onclick="copyToClipboard('timeOutput')">复制起止时间</button>
-        </div>
-        <div class="section">
-            <h3>人工时间：</h3>
-            <pre id="manualTimeOutput"></pre>
-            <button onclick="copyToClipboard('manualTimeOutput')">复制人工时间</button>
-        </div>
-    </div>
+        <h1>起止时间与人工时间提取工具</h1>
+        <p>将 JSON 数据粘贴到下面的文本框中：</p>
+        <textarea id="jsonInput" placeholder="粘贴 JSON 数据..."></textarea>
+        <button onclick="extractTimes()">提取时间</button>
 
-    <div id="message"></div>
+        <div class="container">
+            <div class="section">
+                <h3>起止时间：</h3>
+                <pre id="timeOutput"></pre>
+                <button class="copy-btn" onclick="copyToClipboard('timeOutput')">复制起止时间</button>
+            </div>
+            <div class="section">
+                <h3>人工时间：</h3>
+                <pre id="manualTimeOutput"></pre>
+                <button class="copy-btn" onclick="copyToClipboard('manualTimeOutput')">复制人工时间</button>
+            </div>
+        </div>
+
+        <div id="message"></div>
+    </div>
 
     <script>
         function extractTimes() {
