@@ -3,70 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>时间重叠分析工具</title>
+    <title>JSON 时间重叠计算器</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 300px;
+            margin-top: 10px;
+        }
+        .result {
+            margin-top: 20px;
+        }
+        button {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>JSON 时间重叠计算器</h1>
+    <label for="jsonInput">在下方输入 JSON：</label>
+    <textarea id="jsonInput"></textarea>
+    <button onclick="calculateMetrics()">计算</button>
+    <div class="result">
+        <p><strong>总重叠时间：</strong> <span id="totalOverlap">-</span> 秒</p>
+        <p><strong>准确率：</strong> <span id="accuracy">-</span>%</p>
+        <p><strong>召回率：</strong> <span id="recall">-</span>%</p>
+        <p><strong>F1 分数：</strong> <span id="f1Score">-</span></p>
+    </div>
+
     <script>
         function timeToSeconds(time) {
-            if (!time) return 0;
-            const [hours, minutes, seconds] = time.split(':').map(Number);
-            return hours * 3600 + minutes * 60 + seconds;
+            const [minutes, seconds] = time.split(':').map(Number);
+            return minutes * 60 + seconds;
         }
 
-        function calculateOverlap(start1, end1, start2, end2) {
+        function calculateOverlapTime(start1, end1, start2, end2) {
             const start = Math.max(timeToSeconds(start1), timeToSeconds(start2));
             const end = Math.min(timeToSeconds(end1), timeToSeconds(end2));
             return Math.max(0, end - start);
         }
 
-        function analyzeJSON() {
-            const input = document.getElementById('jsonInput').value;
-            let data;
+        function calculateMetrics() {
+            const jsonInput = document.getElementById('jsonInput').value;
             try {
-                data = JSON.parse(input);
+                const data = JSON.parse(jsonInput);
+                let totalOverlap = 0;
+                let matched = 0;
+                let predicted = 0;
+                let actual = 0;
+
+                data.forEach(item => {
+                    if (item['起止时间'] && item['人工时间']) {
+                        const [start1, end1] = item['起止时间'].split(' - ');
+                        const [start2, end2] = item['人工时间'].split(' - ');
+                        const overlap = calculateOverlapTime(start1, end1, start2, end2);
+                        totalOverlap += overlap;
+                        if (overlap > 0) matched++;
+                        predicted++;
+                        actual++;
+                    }
+                });
+
+                const accuracy = (matched / predicted) * 100 || 0;
+                const recall = (matched / actual) * 100 || 0;
+                const f1Score = (2 * accuracy * recall) / (accuracy + recall) || 0;
+
+                document.getElementById('totalOverlap').innerText = totalOverlap.toFixed(2);
+                document.getElementById('accuracy').innerText = accuracy.toFixed(2);
+                document.getElementById('recall').innerText = recall.toFixed(2);
+                document.getElementById('f1Score').innerText = f1Score.toFixed(2);
             } catch (e) {
-                alert('无效的 JSON 数据');
-                return;
+                alert('无效的 JSON 输入，请检查格式！');
+                console.error(e);
             }
-
-            let totalOverlap = 0;
-            let totalArtificialTime = 0;
-            let totalActualTime = 0;
-            let matchedSegments = 0;
-            let totalSegments = 0;
-
-            data.forEach(item => {
-                if (item['起止时间'] && item['人工时间']) {
-                    const [actualStart, actualEnd] = item['起止时间'].split(' - ');
-                    const [artificialStart, artificialEnd] = item['人工时间'].split(' - ');
-                    const overlap = calculateOverlap(actualStart, actualEnd, artificialStart, artificialEnd);
-                    const actualDuration = timeToSeconds(actualEnd) - timeToSeconds(actualStart);
-                    const artificialDuration = timeToSeconds(artificialEnd) - timeToSeconds(artificialStart);
-                    
-                    totalOverlap += overlap;
-                    totalArtificialTime += artificialDuration;
-                    totalActualTime += actualDuration;
-                    totalSegments++;
-
-                    if (overlap > 0) matchedSegments++;
-                }
-            });
-
-            const precision = totalOverlap / totalArtificialTime || 0;
-            const recall = totalOverlap / totalActualTime || 0;
-            const f1 = precision && recall ? 2 * (precision * recall) / (precision + recall) : 0;
-
-            document.getElementById('result').innerHTML = `
-                <p><strong>总重叠时间：</strong> ${totalOverlap} 秒</p>
-                <p><strong>准确率：</strong> ${(precision * 100).toFixed(2)}%</p>
-                <p><strong>召回率：</strong> ${(recall * 100).toFixed(2)}%</p>
-                <p><strong>F1 分数：</strong> ${(f1 * 100).toFixed(2)}</p>
-            `;
         }
     </script>
-</head>
-<body>
-    <h1>时间重叠分析工具</h1>
-    <textarea id="jsonInput" rows="15" cols="80" placeholder="请粘贴 JSON 数据"></textarea><br>
-    <button onclick="analyzeJSON()">分析</button>
-    <div id="result"></div>
 </body>
 </html>
