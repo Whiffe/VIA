@@ -3,180 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>时间段匹配指标计算</title>
+    <title>起止时间与人工时间提取</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Arial', sans-serif;
             margin: 0;
             padding: 0;
-            background: #f9fafc;
+            background-color: #f7f7f7;
             color: #333;
         }
         .container {
             max-width: 800px;
-            margin: 40px auto;
+            margin: 20px auto;
             padding: 20px;
-            background: #fff;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            border-radius: 8px;
-        }
-        h1 {
-            text-align: center;
-            color: #4a90e2;
-        }
-        h3 {
-            margin-top: 20px;
-            color: #555;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         textarea {
             width: 100%;
-            height: 120px;
-            margin-bottom: 20px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            height: 200px;
+            margin-top: 10px;
             padding: 10px;
-            font-size: 14px;
-            font-family: monospace;
-            background: #fefefe;
+            font-family: 'Arial', sans-serif;
+            box-sizing: border-box;
         }
         button {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            font-size: 16px;
-            color: #fff;
-            background: #4a90e2;
-            border: none;
-            border-radius: 4px;
+            margin-top: 10px;
+            padding: 10px 20px;
             cursor: pointer;
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
         }
         button:hover {
-            background: #357ab7;
+            background-color: #4cae4c;
         }
-        .result {
-            margin-top: 30px;
-            padding: 15px;
-            background: #f4f6f9;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        .section {
+            margin-top: 20px;
         }
-        .result h3 {
-            margin-top: 0;
+        h1, h3 {
+            color: #5cb85c;
         }
         pre {
-            background: #eef1f5;
+            background-color: #f4f4f4;
             padding: 10px;
-            border-radius: 4px;
+            border: 1px solid #ccc;
             overflow-x: auto;
+            border-radius: 5px;
         }
-        .error {
-            color: #d9534f;
-            font-weight: bold;
+        #message {
+            color: red;
             margin-top: 10px;
+        }
+        .copy-btn {
+            margin-top: 10px;
+            padding: 5px 10px;
+            cursor: pointer;
+            background-color: #f0ad4e;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .copy-btn:hover {
+            background-color: #ec971f;
         }
     </style>
 </head>
 <body>
+
     <div class="container">
-        <h1>时间段匹配指标计算</h1>
-        <h3>模型输出 (model_output)</h3>
-        <textarea id="model_output" placeholder='[
-  {
-    "time1": "00:00:00 - 00:00:13",
-    "time2": "00:05:40 - 00:06:00",
-  }
-]'></textarea>
-        <h3>人工结果 (ground_truth)</h3>
-        <textarea id="ground_truth" placeholder='[
-  {
-    "time1": "00:03:16 - 00:04:20",
-    "time2": "00:05:46 - 00:06:12",
-    "time3": "00:15:57 - 00:16:36"
-  }
-]'></textarea>
-        <button onclick="calculateMetrics()">计算指标</button>
-        <div class="result">
-            <h3>结果</h3>
-            <pre id="output"></pre>
-            <p class="error" id="error"></p>
+        <h1>起止时间与人工时间提取工具</h1>
+        <p>将 JSON 数据粘贴到下面的文本框中：</p>
+        <textarea id="jsonInput" placeholder="粘贴 JSON 数据..."></textarea>
+        <button onclick="extractTimes()">提取时间</button>
+
+        <div class="container">
+            <div class="section">
+                <h3>起止时间：</h3>
+                <pre id="timeOutput"></pre>
+                <button class="copy-btn" onclick="copyToClipboard('timeOutput')">复制起止时间</button>
+            </div>
+            <div class="section">
+                <h3>人工时间：</h3>
+                <pre id="manualTimeOutput"></pre>
+                <button class="copy-btn" onclick="copyToClipboard('manualTimeOutput')">复制人工时间</button>
+            </div>
         </div>
+
+        <div id="message"></div>
     </div>
+
     <script>
-        function timeToSeconds(timeStr) {
-            const [hours, minutes, seconds] = timeStr.split(':').map(Number);
-            return hours * 3600 + minutes * 60 + seconds;
-        }
-
-        function parseTimeRange(rangeStr) {
-            const [start, end] = rangeStr.split(' - ');
-            return { start, end };
-        }
-
-        function overlapDuration(range1, range2) {
-            const start1 = timeToSeconds(range1.start);
-            const end1 = timeToSeconds(range1.end);
-            const start2 = timeToSeconds(range2.start);
-            const end2 = timeToSeconds(range2.end);
-            const overlapStart = Math.max(start1, start2);
-            const overlapEnd = Math.min(end1, end2);
-            return Math.max(0, overlapEnd - overlapStart);
-        }
-
-        function extractTimeRanges(data) {
-            const ranges = [];
-            for (const item of data) {
-                for (const key in item) {
-                    if (item[key]) {
-                        ranges.push(parseTimeRange(item[key]));
-                    }
-                }
-            }
-            return ranges;
-        }
-
-        function totalDuration(ranges) {
-            return ranges.reduce((sum, r) => sum + (timeToSeconds(r.end) - timeToSeconds(r.start)), 0);
-        }
-
-        function calculateMetrics() {
-            const modelOutputText = document.getElementById('model_output').value;
-            const groundTruthText = document.getElementById('ground_truth').value;
-            const outputElement = document.getElementById('output');
-            const errorElement = document.getElementById('error');
-            outputElement.textContent = '';
-            errorElement.textContent = '';
+        function extractTimes() {
+            const input = document.getElementById('jsonInput').value;
+            let jsonData;
 
             try {
-                const modelOutput = JSON.parse(modelOutputText);
-                const groundTruth = JSON.parse(groundTruthText);
-
-                const modelRanges = extractTimeRanges(modelOutput);
-                const groundRanges = extractTimeRanges(groundTruth);
-
-                let matchedDuration = 0;
-                for (const gt of groundRanges) {
-                    for (const mo of modelRanges) {
-                        matchedDuration += overlapDuration(gt, mo);
-                    }
-                }
-
-                const totalGroundTruthDuration = totalDuration(groundRanges);
-                const totalModelDuration = totalDuration(modelRanges);
-
-                const precision = totalGroundTruthDuration > 0 ? (matchedDuration / totalGroundTruthDuration) : 0;
-                const recall = totalModelDuration > 0 ? (matchedDuration / totalModelDuration) : 0;
-                const f1Score = (precision + recall) > 0 ? (2 * precision * recall / (precision + recall)) : 0;
-
-                outputElement.textContent = `匹配时长(秒): ${matchedDuration}\n` +
-                                            `标准答案总时长(秒): ${totalGroundTruthDuration}\n` +
-                                            `模型输出总时长(秒): ${totalModelDuration}\n` +
-                                            `准确率(Precision): ${precision.toFixed(2)}\n` +
-                                            `召回率(Recall): ${recall.toFixed(2)}\n` +
-                                            `F1分数(F1 Score): ${f1Score.toFixed(2)}`;
+                jsonData = JSON.parse(input);
             } catch (error) {
-                errorElement.textContent = '请输入有效的 JSON 格式！';
+                displayMessage('JSON 格式错误，请检查输入！');
+                return;
             }
+
+            const timeArray = [];
+            const manualTimeArray = [];
+
+            jsonData.forEach(item => {
+                if (item['起止时间']) {
+                    timeArray.push(item['起止时间']);
+                }
+                let manualTime = item['人工时间'] || item['起止时间']; // 如果没有人工时间，则使用起止时间
+                manualTimeArray.push(manualTime);
+            });
+
+            document.getElementById('timeOutput').textContent = JSON.stringify(timeArray, null, 2);
+            document.getElementById('manualTimeOutput').textContent = JSON.stringify(manualTimeArray, null, 2);
+        }
+        
+        function copyToClipboard(elementId) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                displayMessage('已成功复制到剪贴板！');
+            }).catch(err => {
+                displayMessage('复制失败，请手动复制！');
+                console.error('复制失败:', err);
+            });
+        }
+
+        function displayMessage(message) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = message;
+            setTimeout(() => {
+                messageElement.textContent = '';
+            }, 3000); // 显示消息3秒后消失
         }
     </script>
+
 </body>
 </html>
