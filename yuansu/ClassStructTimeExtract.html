@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>起止时间与人工时间提取</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin-top: 10px;
+        }
+        .container {
+            margin-top: 20px;
+        }
+        .section {
+            margin-top: 20px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ccc;
+            overflow-x: auto;
+        }
+        #message {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>起止时间与人工时间提取工具</h1>
+    <p>将 JSON 数据粘贴到下面的文本框中：</p>
+    <textarea id="jsonInput" placeholder="粘贴 JSON 数据..."></textarea>
+    <button onclick="extractTimes()">提取时间</button>
+
+    <div class="container">
+        <div class="section">
+            <h3>起止时间：</h3>
+            <pre id="timeOutput"></pre>
+            <button onclick="copyToClipboard('timeOutput')">复制起止时间</button>
+        </div>
+        <div class="section">
+            <h3>人工时间：</h3>
+            <pre id="manualTimeOutput"></pre>
+            <button onclick="copyToClipboard('manualTimeOutput')">复制人工时间</button>
+        </div>
+    </div>
+
+    <div id="message"></div>
+
+    <script>
+        function extractTimes() {
+            const input = document.getElementById('jsonInput').value;
+            let jsonData;
+
+            try {
+                jsonData = JSON.parse(input);
+            } catch (error) {
+                displayMessage('JSON 格式错误，请检查输入！');
+                return;
+            }
+
+            const timeArray = [];
+            const manualTimeArray = [];
+
+            jsonData.forEach(item => {
+                if (item['起止时间']) {
+                    timeArray.push(item['起止时间']);
+                }
+                let manualTime = item['人工时间'] || item['起止时间']; // 如果没有人工时间，则使用起止时间
+                manualTimeArray.push(manualTime);
+            });
+
+            document.getElementById('timeOutput').textContent = JSON.stringify(timeArray, null, 2);
+            document.getElementById('manualTimeOutput').textContent = JSON.stringify(manualTimeArray, null, 2);
+        }
+        
+        function copyToClipboard(elementId) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                displayMessage('已成功复制到剪贴板！');
+            }).catch(err => {
+                displayMessage('复制失败，请手动复制！');
+                console.error('复制失败:', err);
+            });
+        }
+
+        function displayMessage(message) {
+            const messageElement = document.getElementById('message');
+            messageElement.textContent = message;
+            setTimeout(() => {
+                messageElement.textContent = '';
+            }, 3000); // 显示消息3秒后消失
+        }
+    </script>
+
+</body>
+</html>
