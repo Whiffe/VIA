@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>提取问题准确率计算器</title>
+    <style>
+        /* 全局样式 */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f9fafc;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 90%;
+            margin: 40px auto;
+            background: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a90e2;
+            margin-bottom: 20px;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: none;
+            margin-bottom: 20px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button.calculate {
+            background-color: #4a90e2;
+            color: white;
+        }
+
+        button.calculate:hover {
+            background-color: #357abd;
+        }
+
+        button.copy {
+            background-color: #34c759;
+            color: white;
+        }
+
+        button.copy:hover {
+            background-color: #28a745;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f1f7ff;
+            border-radius: 4px;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+        }
+
+        /* 悬浮提示框样式 */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #34c759;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>提取问题准确率计算器</h1>
+        <label for="jsonInput">请粘贴JSON数据：</label>
+        <textarea id="jsonInput" placeholder='[{"问题": "example", "人工问题": "example"}]'></textarea>
+        <div class="button-group">
+            <button class="calculate" onclick="calculateMetrics()">计算</button>
+            <button class="copy" onclick="copyResults()">复制结果</button>
+        </div>
+        <div class="result" id="results"></div>
+        <div class="footer">© 2024 准确率计算工具</div>
+    </div>
+
+    <!-- 悬浮提示框 -->
+    <div class="toast" id="toast">复制成功！</div>
+
+    <script>
+        function calculateMetrics() {
+            const input = document.getElementById('jsonInput').value;
+            let data;
+            try {
+                data = JSON.parse(input);
+            } catch (e) {
+                alert('JSON格式错误，请检查输入');
+                return;
+            }
+
+            let model_total = 0;
+            let human_total = 0;
+            let correct = 0;
+            let studentQuestionError = 0;
+            let missingQuestionError = 0;
+            let mismatchedQuestionError = 0;
+
+            data.forEach(item => {
+                if (item['人工问题'] === undefined) {
+                    correct++;
+                    model_total++;
+                    human_total++;
+                } else if (item['人工问题'] === '{{学生提问}}') {
+                    studentQuestionError++;
+                    model_total++;
+                } else if (item['问题'] === '' && item['人工问题'] !== '') {
+                    missingQuestionError++;
+                    human_total++;
+                } else if (item['问题'] !== '' && item['人工问题'] !== '') {
+                    mismatchedQuestionError++;
+                    model_total++;
+                    human_total++;
+                }
+            });
+
+            const accuracy = (correct / human_total).toFixed(2);
+            const recall = (correct / model_total).toFixed(2);
+            const f1 = (2 * (accuracy * recall) / (parseFloat(accuracy) + parseFloat(recall))).toFixed(2);
+
+            const resultText = `
+模型提取题目数: ${model_total}
+人工提取题目数: ${human_total}
+正确提取: ${correct}
+学生问题提取错误: ${studentQuestionError}
+问题遗漏: ${missingQuestionError}
+问题提取错误: ${mismatchedQuestionError}
+准确率: ${accuracy}
+召回率: ${recall}
+F1分数: ${f1}
+            `;
+            document.getElementById('results').innerText = resultText;
+        }
+
+        function copyResults() {
+            const results = document.getElementById('results').innerText;
+            if (!results) {
+                showToast('没有可复制的结果，请先进行计算', true);
+                return;
+            }
+
+            navigator.clipboard.writeText(results).then(() => {
+                showToast('复制成功！');
+            }).catch(err => {
+                console.error('复制失败:', err);
+                showToast('复制失败，请手动选择复制', true);
+            });
+        }
+
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.style.backgroundColor = isError ? '#ff3b30' : '#34c759';
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
