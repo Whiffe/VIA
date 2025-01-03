@@ -11,6 +11,11 @@
         textarea { width: 100%; height: 200px; margin-bottom: 10px; }
         button { margin-top: 10px; }
         .result { margin-top: 20px; font-weight: bold; }
+        .comparison { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 10px; }
+        .comparison-item { margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .comparison-item.success { background: #e6ffed; border-color: #28a745; }
+        .comparison-item.error { background: #ffe6e6; border-color: #dc3545; }
+        .comparison-item.warning { background: #fffbe6; border-color: #ffc107; }
     </style>
 </head>
 <body>
@@ -22,6 +27,7 @@
         <textarea id="humanOutput" placeholder='请粘贴人工输出 JSON'></textarea>
         <button onclick="evaluateResults()">计算准确率、召回率、F1</button>
         <div class="result" id="result"></div>
+        <div class="comparison" id="comparison"></div>
     </div>
 
     <script>
@@ -42,17 +48,33 @@
             const modelData = JSON.parse(document.getElementById('modelOutput').value);
             const humanData = JSON.parse(document.getElementById('humanOutput').value);
             let correct = 0, totalModel = modelData.length, totalHuman = humanData.length;
+            let comparisonHTML = '';
 
             humanData.forEach(humanItem => {
                 const matched = modelData.find(modelItem => 
                     timeOverlap(modelItem['起止时间'], humanItem['起止时间'])
                 );
                 if (matched) {
+                    let matchStatus = '匹配成功';
+                    let itemClass = 'success';
                     if (humanItem['问题'] === '{{学生提问}}') {
-                        correct += 0;
+                        matchStatus = '匹配错误 (学生提问)';
+                        itemClass = 'error';
                     } else {
                         correct += 1;
                     }
+                    comparisonHTML += `
+                        <div class="comparison-item ${itemClass}">
+                            <p><strong>大模型输出:</strong> ${JSON.stringify(matched)}</p>
+                            <p><strong>人工输出:</strong> ${JSON.stringify(humanItem)}</p>
+                            <p><strong>匹配状态:</strong> ${matchStatus}</p>
+                        </div>`;
+                } else {
+                    comparisonHTML += `
+                        <div class="comparison-item warning">
+                            <p><strong>人工输出:</strong> ${JSON.stringify(humanItem)}</p>
+                            <p><strong>匹配状态:</strong> 未匹配 (大模型可能漏掉)</p>
+                        </div>`;
                 }
             });
 
@@ -61,13 +83,14 @@
             const f1 = precision && recall ? (2 * precision * recall) / (precision + recall) : 0;
 
             document.getElementById('result').innerHTML = `
-                <p>模型输出 (totalModel): ${totalModel}</p>
-                <p>人工输出 (totalHuman): ${totalHuman}</p>
+                <p>模型输出数量 (totalModel): ${totalModel}</p>
+                <p>人工输出数量 (totalHuman): ${totalHuman}</p>
                 <p>匹配正确 (correct): ${correct}</p>
                 <p>准确率 (Precision): ${(precision * 100).toFixed(2)}%</p>
                 <p>召回率 (Recall): ${(recall * 100).toFixed(2)}%</p>
                 <p>F1 分数: ${(f1 * 100).toFixed(2)}%</p>
             `;
+            document.getElementById('comparison').innerHTML = comparisonHTML;
         }
     </script>
 </body>
