@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -32,12 +33,27 @@
 
     <script>
         function timeOverlap(time1, time2) {
+            if (!time1 || !time2) {
+                console.warn('Invalid time range:', time1, time2);
+                return false; // 如果任一时间为空，返回 false
+            }
+            console.log(time1, time2);
+
             const [start1, end1] = time1.split(' - ').map(t => timeToSeconds(t));
             const [start2, end2] = time2.split(' - ').map(t => timeToSeconds(t));
+
+            // 确保时间是有效数字
+            if (isNaN(start1) || isNaN(end1) || isNaN(start2) || isNaN(end2)) {
+                console.warn('Invalid time values:', start1, end1, start2, end2);
+                return false; // 如果时间无效，返回 false
+            }
+
             const overlap = Math.max(0, Math.min(end1, end2) - Math.max(start1, start2));
             const duration1 = end1 - start1;
+
             return (overlap / duration1) > 0.7;
         }
+
 
         function timeToSeconds(time) {
             const [h = 0, m = 0, s = 0] = time.split(':').map(Number);
@@ -51,9 +67,16 @@
             let comparisonHTML = '';
 
             humanData.forEach(humanItem => {
-                const matched = modelData.find(modelItem => 
-                    timeOverlap(modelItem['起止时间'], humanItem['起止时间'])
-                );
+                const matched = modelData.find(modelItem => {
+                    const modelTime = modelItem['起止时间'];
+                    const humanTime = humanItem['起止时间'];
+
+                    if (!modelTime || !humanTime) {
+                        console.warn('Missing time range:', modelTime, humanTime);
+                        return false;
+                    }
+                    return timeOverlap(modelTime, humanTime);
+                });
                 if (matched) {
                     let matchStatus = '匹配成功';
                     let itemClass = 'success';
