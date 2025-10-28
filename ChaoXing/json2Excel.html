@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>超星知识图谱-智能导入-模版-Excel 填充工具</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  body { font-family: "Microsoft YaHei", sans-serif; background: #f7f7f7; padding: 40px; }
+  h2 { color: #333; }
+  .box { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 600px; margin: auto; }
+  input[type=file] { margin: 10px 0; }
+  button { background: #0078d7; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+  button:hover { background: #005ea0; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h2>📘 超星知识图谱-智能导入-模版-Excel 填充工具</h2>
+  <p>上传 Excel（模板）和 JSON（数据）文件：</p>
+  <input type="file" id="excelFile" accept=".xlsx,.xls"><br>
+  <input type="file" id="jsonFile" accept=".json"><br>
+  <button id="processBtn">开始填充 Excel</button>
+  <p id="status"></p>
+</div>
+
+<script>
+document.getElementById("processBtn").addEventListener("click", async () => {
+    const excelFile = document.getElementById("excelFile").files[0];
+    const jsonFile = document.getElementById("jsonFile").files[0];
+    const status = document.getElementById("status");
+
+    if (!excelFile || !jsonFile) {
+        status.innerText = "⚠️ 请先选择 Excel 和 JSON 文件！";
+        return;
+    }
+
+    status.innerText = "⏳ 正在读取文件...";
+
+    // 读取 Excel
+    const excelData = await excelFile.arrayBuffer();
+    const workbook = XLSX.read(excelData);
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+
+    // 清空第三行及以下内容
+    const range = XLSX.utils.decode_range(sheet["!ref"]);
+    for (let R = 2; R <= range.e.r; R++) { // 第三行索引为2
+        for (let C = 0; C <= 14; C++) { // A~O列
+            const cellAddr = XLSX.utils.encode_cell({r: R, c: C});
+            delete sheet[cellAddr];
+        }
+    }
+
+    // 解析 JSON
+    const jsonText = await jsonFile.text();
+    const data = JSON.parse(jsonText);
+
+    let currentRow = 2; // 从第三行开始写（0-based）
+
+    function fillRow(levels, item) {
+        const colMap = { // 对应列位置
+            1: "A", 2: "B", 3: "C", 4: "D", 5: "E", 6: "F", 7: "G"
+        };
+        const startCol = colMap[levels.length];
+        const row = currentRow + 1; // Excel行号（人类视角）
+
+        // 写入当前层级内容
+        if (item[`${levels[levels.length - 1]}内容`]) {
+            const cell = startCol + row;
+            sheet[cell] = { t: "s", v: item[`${levels[levels.length - 1]}内容`] };
+        }
+
+        // 写入通用字段
+        const fields = ["前置知识点","后置知识点","关联知识点","标签","认知维度","分类","教学目标","知识点说明"];
+        const fieldCols = ["H","I","J","K","L","M","N","O"];
+        fields.forEach((f, idx) => {
+            if (item[f] !== undefined) {
+                sheet[fieldCols[idx] + row] = { t: "s", v: item[f] };
+            }
+        });
+
+        currentRow++;
+
+        // 检查子层级（例如 "二级知识点"）
+        const nextLevelNames = ["二级知识点","三级知识点","四级知识点","五级知识点","六级知识点","七级知识点"];
+        for (const nextLevel of nextLevelNames) {
+            if (item[nextLevel] && Array.isArray(item[nextLevel])) {
+                item[nextLevel].forEach(sub => fillRow([...levels, nextLevel], sub));
+            }
+        }
+    }
+
+    // 开始写入 Excel
+    data.forEach(entry => {
+        if (entry["一级知识点"]) {
+            fillRow(["一级知识点"], entry["一级知识点"]);
+        }
+    });
+
+    // 更新范围
+    sheet["!ref"] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:currentRow,c:14}});
+
+    // 生成文件
+    const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([wbout], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "填充后的知识点.xlsx";
+    a.click();
+    URL.revokeObjectURL(url);
+
+    status.innerText = "✅ 填充完成！Excel 已下载。";
+});
+</script>
+</body>
+</html>
