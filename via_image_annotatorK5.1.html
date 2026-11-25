@@ -97,7 +97,7 @@ html, body { margin:0; padding:0; box-sizing:border-box; font-family:Sans; font-
 
 #view_container > .view_content_container > .file_container { min-width:0; min-height:0; overflow:auto; overscroll-behavior:contain; display:block; position:relative; margin:0; padding:0; }
 #view_container > .view_content_container > .file_container * { position:absolute; top:0; }
-#view_container > .view_content_container > .file_container .rinput_enabled { }
+#view_container > .view_content_container > .file_container .rinput_enabled { touch-action:none; user-select:none; }
 #view_container > .view_content_container > .file_container > .metadata_container { display:inline-block; font-size:small; background-color:white; z-index:1001; }
 #view_container > .view_content_container > .file_container > .metadata_container * { position:relative; vertical-align:middle; }
 #view_container > .view_content_container > .file_container > .metadata_container table { position:relative; border-collapse:collapse; border:none; margin:0.2em; }
@@ -4756,6 +4756,7 @@ _via_file_annotator.prototype._file_html_element_ready = function() {
   this._file_html_element_compute_scale();
   this.file_html_element.setAttribute('style', this.file_html_element_size_css);
   this.file_html_element.setAttribute('id', 'file_content');
+  if (this.file_html_element.tagName === 'IMG') this.file_html_element.draggable = false;
   this.c.appendChild(this.file_html_element);
 
   // add canvas for region shape
@@ -4824,11 +4825,41 @@ _via_file_annotator.prototype._file_html_element_ready = function() {
 // input event listeners
 //
 _via_file_annotator.prototype._rinput_attach_input_handlers = function(container) {
-  container.addEventListener('mousedown', this._rinput_mousedown_handler.bind(this));
-  container.addEventListener('mouseup', this._rinput_mouseup_handler.bind(this));
-  container.addEventListener('mousemove', this._rinput_mousemove_handler.bind(this));
-  container.addEventListener('mouseout', this._rinput_mouseout_handler.bind(this));
-  container.addEventListener('mouseover', this._rinput_mouseover_handler.bind(this));
+  var active_pointer = null;
+  container.addEventListener('pointerdown', function(e) {
+    if (!e.isPrimary || e.button !== 0 || active_pointer !== null) return;
+    // Keep move and release events on the overlay across panels and image edges.
+    container.setPointerCapture(e.pointerId);
+    active_pointer = e.pointerId;
+    this._rinput_mousedown_handler(e);
+  }.bind(this));
+  container.addEventListener('pointermove', function(e) {
+    if (!e.isPrimary || (active_pointer !== null && e.pointerId !== active_pointer)) return;
+    this._rinput_mousemove_handler(e);
+  }.bind(this));
+  container.addEventListener('pointerup', function(e) {
+    if (e.pointerId !== active_pointer) return;
+    active_pointer = null;
+    this._rinput_mouseup_handler(e);
+  }.bind(this));
+  var cancel_drag = function(e) {
+    if (e.pointerId !== active_pointer) return;
+    active_pointer = null;
+    this.user_input_pts = [];
+    this.resize_selected_mid_index = -1;
+    this.resize_control_point_index = -1;
+    this.resize_type = '';
+    container.style.cursor = '';
+    this._tmpreg_clear();
+    this._state_set(this.selected_mid_list.length ?
+      _VIA_RINPUT_STATE.REGION_SELECTED : _VIA_RINPUT_STATE.IDLE);
+    this._creg_draw_all();
+  }.bind(this);
+  container.addEventListener('pointercancel', cancel_drag);
+  container.addEventListener('lostpointercapture', cancel_drag);
+  container.addEventListener('pointerleave', this._rinput_mouseout_handler.bind(this));
+  container.addEventListener('pointerenter', this._rinput_mouseover_handler.bind(this));
+  container.addEventListener('dragstart', function(e) { e.preventDefault(); });
 
   container.addEventListener('wheel', this._rinput_wheel_handler.bind(this));
 
@@ -5030,8 +5061,9 @@ _via_file_annotator.prototype._rinput_cancel_last_nclick = function() {
 
 _via_file_annotator.prototype._rinput_mousedown_handler = function(e) {
   e.stopPropagation();
-  var cx = e.offsetX;
-  var cy = e.offsetY;
+  var rect = this.input.getBoundingClientRect();
+  var cx = e.clientX - rect.left;
+  var cy = e.clientY - rect.top;
   //console.log('[vid=' + this.vid + ', state=' + this._state_id2str(this.state_id) + '] : mousedown at (cx,cy) = (' + cx + ',' + cy + ')');
 
   if ( this.state_id === _VIA_RINPUT_STATE.IDLE ) {
@@ -5139,8 +5171,9 @@ _via_file_annotator.prototype._rinput_mousedown_handler = function(e) {
 
 _via_file_annotator.prototype._rinput_mouseup_handler = function(e) {
   e.stopPropagation();
-  var cx = e.offsetX;
-  var cy = e.offsetY;
+  var rect = this.input.getBoundingClientRect();
+  var cx = e.clientX - rect.left;
+  var cy = e.clientY - rect.top;
   //console.log('[vid=' + this.vid + ', state=' + this._state_id2str(this.state_id) + '] : mouseup at (cx,cy) = (' + cx + ',' + cy + ')');
 
   if ( this.state_id === _VIA_RINPUT_STATE.REGION_DRAW_ONGOING ) {
@@ -5272,7 +5305,7 @@ _via_file_annotator.prototype._rinput_mouseup_handler = function(e) {
     }
     this._tmpreg_clear();
     this.user_input_pts = [];
-    this.resized_selected_mid_index = -1;
+    this.resize_selected_mid_index = -1;
     this.resize_control_point_index = -1;
     this.resize_type = '';
     this._state_set( _VIA_RINPUT_STATE.REGION_SELECTED );
@@ -5312,8 +5345,9 @@ _via_file_annotator.prototype._rinput_mouseup_handler = function(e) {
 
 _via_file_annotator.prototype._rinput_mousemove_handler = function(e) {
   e.stopPropagation();
-  var cx = e.offsetX;
-  var cy = e.offsetY;
+  var rect = this.input.getBoundingClientRect();
+  var cx = e.clientX - rect.left;
+  var cy = e.clientY - rect.top;
   this.last_cx = cx;
   this.last_cy = cy;
 
