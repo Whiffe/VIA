@@ -664,8 +664,9 @@ to annotate temporal segments of a video: contains 4 rows
 
         <section id="tutorial_coexist">
           <h2>13. K5.1：同时看见共存行为</h2>
+          <p><strong>选中聚焦：</strong>选中一个或多个框后，其它框、文字标签和共存色条自动淡化 70%（保留 30% 不透明度）；选中的框及色条保持正常清晰，并优先显示在其它框上方。取消选择后所有区域恢复正常显示。此效果适用于 Label 和 Color 模式，只改变视觉显示，不修改标注数据或坐标。</p>
           <p>一个目标可能同时有“课堂行为：趴桌”和“说话：用手机”。点击 Label 切换到 Color 模式后，边框仍按当前选定的属性着色；边框上沿外侧用细小的分段色条显示已填写的属性值，每段颜色对应一个值。例如“趴桌＋用手机”会显示两个颜色段，不在图片上绘制行为文字或白底文字块，减少对目标的遮挡。靠近图片顶边时色条会贴着图内上沿显示。</p>
-          <p>类别颜色与共存色条已合并到同一个 <strong>Label / Color</strong> 按钮：第一次点击，按钮显示 Color，同时开启类别边框颜色、颜色图例和共存色条；第二次点击，按钮恢复 Label，并恢复原有边框及文字标签显示，不再绘制共存色条。不需要操作第二个按钮。有两个或更多有效属性值的目标会显示分段色条，选中的目标即使只有一个值也会显示。小写 l 仍可隐藏 / 恢复标签与色条。</p>
+          <p>类别颜色与共存色条已合并到同一个 <strong>Label / Color</strong> 按钮：第一次点击，按钮显示 Color，同时开启类别边框颜色、颜色图例和共存色条；第二次点击，按钮恢复 Label，并恢复原有边框及文字标签显示，不再绘制共存色条。不需要操作第二个按钮。只有两个或更多有效属性值的目标才显示分段色条；即使选中了目标，只有一个值时也不显示色条。小写 l 仍可隐藏 / 恢复标签与色条。</p>
           <p>支持不同属性之间的共存，也支持 CHECKBOX 多选属性中同时勾选的多个值。空值不显示，色条顺序按项目属性顺序排列，多选属性中的每个值分别占一个颜色段。色条是快速提示，具体行为可选中目标后在属性面板查看。不同属性的选项颜色可能相同，因此不能仅凭颜色确定行为名称。</p>
           <p class="tutorial_note">这里只改变显示，不会自动添加行为或改变标签定义。截图中的单选列，每一列仍只能选一个值；跨列的“趴桌＋用手机”可以直接共存。若希望同一列也能多选，应另行规划 CHECKBOX 属性，已有项目不要随意切换类型，以免影响现有数据。新增显示不修改原图坐标、标签内容或导出格式。</p>
         </section>
@@ -5873,26 +5874,41 @@ _via_file_annotator.prototype._creg_clear = function() {
 
 _via_file_annotator.prototype._creg_draw_all = function() {
   this._creg_clear();
-
-  if ( this.va.region_color_mode ||
-       this.d.store.config.ui['spatial_region_label_attribute_id'] === '' ) {
-    for ( var mid in this.creg ) {
+  var ids = Object.keys(this.creg);
+  var selected = new Set(this.selected_mid_list.filter(function(mid) {
+    return Object.prototype.hasOwnProperty.call(this.creg,mid);
+  }.bind(this)));
+  var text_mode = !this.va.region_color_mode &&
+    this.d.store.config.ui['spatial_region_label_attribute_id'] !== '';
+  var draw_group = function(group) {
+    group.forEach(function(mid) {
       this._creg_draw(mid);
-    }
+      if (text_mode) this._creg_draw_label(mid);
+    }.bind(this));
+  }.bind(this);
+
+  if (selected.size) {
+    // Render other regions first, then attenuate the entire layer. Some VIA
+    // shape routines reset globalAlpha, so fading at composition is reliable
+    // for every shape, its control points, text and coexistence swatches.
+    draw_group(ids.filter(function(mid) { return !selected.has(mid); }));
+    this._draw_coexisting_labels(false);
+    var ctx = this.rshapectx;
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.globalAlpha = 0.30; // 70% transparency for non-selected annotations.
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,this.rshape_canvas.width,this.rshape_canvas.height);
+    ctx.restore();
+    // Selected annotations render last, remaining legible at intersections.
+    draw_group(ids.filter(function(mid) { return selected.has(mid); }));
+    this._draw_coexisting_labels(true);
   } else {
-    for ( var mid in this.creg ) {
-      this._creg_draw(mid);
-      this._creg_draw_label(mid);
-    }
+    draw_group(ids);
+    this._draw_coexisting_labels();
   }
-
-  this._draw_coexisting_labels();
   if (this.va.review) this.va.review.draw_marker(this);
-
-  // file label: used for image pair annotation
-  if ( this.file_label.length !== 0 ) {
-    this._creg_draw_file_label();
-  }
+  if (this.file_label.length !== 0) this._creg_draw_file_label();
 }
 
 _via_file_annotator.prototype._creg_draw_file_label = function() {
@@ -13599,15 +13615,16 @@ _via_file_annotator.prototype._coexisting_labels = function(mid) {
   }.bind(this));
   return labels;
 };
-_via_file_annotator.prototype._draw_coexisting_labels = function() {
+_via_file_annotator.prototype._draw_coexisting_labels = function(only_selected) {
   if (!this.va.region_color_mode || !this.show_region_label) return;
   var ctx = this.rshapectx;
   ctx.save();
   ctx.globalAlpha = 1;
   Object.keys(this.creg).forEach(function(mid) {
     var selected = this.selected_mid_list.indexOf(mid) >= 0;
+    if (typeof only_selected === 'boolean' && selected !== only_selected) return;
     var labels = this._coexisting_labels(mid);
-    if (!labels.length || (!selected && labels.length < 2)) return;
+    if (labels.length < 2) return;
     var b = this.va.review.bounds(this.d.store.metadata[mid].xy,this);
     if (!b.every(Number.isFinite)) return;
     // Compact screen-sized swatches sit outside the target, not over its contents.
